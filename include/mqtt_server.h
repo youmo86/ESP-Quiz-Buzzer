@@ -12,6 +12,7 @@ struct ClientInfo {
   bool connected;
   bool buzzed;
   uint32_t lastSeen;
+  uint16_t batteryMv; // Latest battery voltage reported by client; 0 = unknown/not reported yet
 };
 
 // Custom MQTT Broker class
