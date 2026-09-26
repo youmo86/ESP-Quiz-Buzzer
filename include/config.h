@@ -5,6 +5,13 @@
 constexpr uint8_t LED_PIN = 5;      // WS2812B Data Pin (both Server & Client)
 constexpr uint8_t BUTTON_PIN = 18;  // Main Button Pin with INPUT_PULLUP (both Server & Client)
 
+// Client battery monitoring
+#ifndef SERVER
+  constexpr uint8_t BATTERY_ADC_PIN = 34;       // ADC1 input; usable while WiFi is active
+  constexpr uint8_t BATTERY_ADC_SAMPLES = 8;    // Average samples for a stable reading
+  constexpr float BATTERY_DIVIDER_RATIO = 2.0f; // 100k / 100k voltage divider
+#endif
+
 // Additional Server Buttons (for Quiz Master control)
 #ifdef SERVER
   constexpr uint8_t NEXT_BUTTON_PIN = 19;     // "Nächster Client" / "Falsche Antwort"
@@ -46,8 +53,8 @@ constexpr uint8_t MAX_CLIENTS = 10;
 constexpr uint8_t MIN_CLIENTS_TO_START = 1;
 
 // Ping Configuration
-constexpr uint16_t PING_INTERVAL_MS = 5000;     // Ping every 5 seconds
-constexpr uint16_t CLIENT_TIMEOUT_MS = 10000;   // Consider client dead after 10 seconds
+constexpr uint16_t PING_INTERVAL_MS = 10000;    // Heartbeat + battery telemetry every 10 seconds
+constexpr uint16_t CLIENT_TIMEOUT_MS = 30000;   // Allow two missed heartbeats before considering client dead
 
 // RGB Color Structure
 struct Rgb {
