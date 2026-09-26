@@ -6,6 +6,19 @@
 ClientMQTT* clientMqtt = nullptr;
 bool gameIsOpen = false; // Track if game is in OPEN state
 
+namespace {
+uint16_t readBatteryMillivolts() {
+  uint32_t totalMv = 0;
+
+  for (uint8_t i = 0; i < BATTERY_ADC_SAMPLES; ++i) {
+    totalMv += analogReadMilliVolts(BATTERY_ADC_PIN);
+  }
+
+  const uint32_t adcMv = totalMv / BATTERY_ADC_SAMPLES;
+  return static_cast<uint16_t>(adcMv * BATTERY_DIVIDER_RATIO);
+}
+}
+
 ClientMQTT::ClientMQTT() : mqttClient(wifiClient), connected(false), lastConnectionAttempt(0), lastPing(0) {
   // Generate unique client ID based on MAC
   uint64_t mac = ESP.getEfuseMac();
@@ -14,6 +27,10 @@ ClientMQTT::ClientMQTT() : mqttClient(wifiClient), connected(false), lastConnect
 
 void ClientMQTT::begin() {
   Serial.printf("Client ID: %s\n", clientId.c_str());
+
+  // GPIO34 is input-only and belongs to ADC1, so it remains usable with WiFi enabled.
+  pinMode(BATTERY_ADC_PIN, INPUT);
+  analogSetPinAttenuation(BATTERY_ADC_PIN, ADC_11db);
   
   // Set MQTT server and callback
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
@@ -37,8 +54,8 @@ void ClientMQTT::loop() {
     } else {
       mqttClient.loop();
       
-      // Send ping every 10 seconds
-      if (millis() - lastPing > 10000) {
+      // Heartbeat also carries battery voltage. This remains non-blocking and secondary to buzz handling.
+      if (millis() - lastPing > PING_INTERVAL_MS) {
         sendPing();
         lastPing = millis();
       }
@@ -160,14 +177,19 @@ void ClientMQTT::sendBuzz() {
 
 void ClientMQTT::sendPing() {
   if (!isConnected()) return;
+
+  // Battery measurement is intentionally performed only when the heartbeat is sent.
+  const uint16_t batteryMv = readBatteryMillivolts();
   
-  StaticJsonDocument<100> doc;
+  StaticJsonDocument<128> doc;
   doc[JsonKey::ID] = clientId;
+  doc[JsonKey::BATTERY_MV] = batteryMv;
   
   String message;
   serializeJson(doc, message);
   
   mqttClient.publish(Topic::PING, message.c_str());
+  Serial.printf("Sent heartbeat: %s\n", message.c_str());
 }
 
 const String& ClientMQTT::getClientId() const {
@@ -280,7 +302,7 @@ void handleCommand(const String& payload) {
       clientManager->setState(ClientState::IDLE);
       Serial.printf("Client RESET - can buzz again (gameIsOpen: %s)\n", gameIsOpen ? "true" : "false");
     } else if (cmd == "PING_REQUEST") {
-      // Respond to server ping
+      // Respond to server ping, including the current battery voltage.
       if (clientMqtt && clientMqtt->isConnected()) {
         clientMqtt->sendPing();
         Serial.println("Responded to server ping");
