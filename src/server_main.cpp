@@ -1,15 +1,20 @@
 #define SERVER 1
 #include <Arduino.h>
 #include <WiFi.h>
+#include <SPI.h>
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
 #include <Bounce2.h>
 #include "config.h"
 #include "protocol.h"
 #include "mqtt_server.h"
 #include "led_controller.h"
 #include "game_manager.h"
+#include "display_controller.h"
 
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_ILI9341 tft(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
 
 Bounce btnBack;
 Bounce btnNext;
@@ -31,7 +36,6 @@ static void handleMasterButtons() {
   btnWrong.update();
   btnCorrect.update();
 
-  // ◀ : deliberate long hold to reset the whole quiz to the beginning.
   if (btnBack.fell()) {
     backPressedAt = millis();
     backResetTriggered = false;
@@ -46,7 +50,6 @@ static void handleMasterButtons() {
     backResetTriggered = false;
   }
 
-  // ▶ : start the quiz/question, or force the next question from any game state.
   if (btnNext.fell() && gameManager) {
     if (currentPhase == Phase::LOBBY) {
       if (gameClientCount >= MIN_CLIENTS_TO_START) {
@@ -56,16 +59,17 @@ static void handleMasterButtons() {
     } else if (currentPhase != Phase::BOOT) {
       gameManager->startQuestion();
     }
+    if (displayController) displayController->forceRefresh();
   }
 
-  // ✕ : current answer is wrong; advance to the next queued buzzer.
   if (btnWrong.fell() && gameManager && currentPhase == Phase::ANSWER) {
     gameManager->nextClient();
+    if (displayController) displayController->forceRefresh();
   }
 
-  // ✓ : current answer is correct; finish the question.
   if (btnCorrect.fell() && gameManager && currentPhase == Phase::ANSWER) {
     gameManager->correctAnswer();
+    if (displayController) displayController->forceRefresh();
   }
 }
 
@@ -87,6 +91,11 @@ void setup() {
   setupButton(btnWrong, BTN_WRONG_PIN);
   setupButton(btnCorrect, BTN_CORRECT_PIN);
 
+  // ILI9341 on the ESP32 hardware VSPI bus. Touch controller is intentionally unused.
+  SPI.begin(TFT_SCK_PIN, TFT_MISO_PIN, TFT_MOSI_PIN, TFT_CS_PIN);
+  displayController = new DisplayController(tft);
+  displayController->begin();
+
   gameManager = new GameManager();
 
   Serial.println("Setting up WiFi Access Point...");
@@ -104,8 +113,8 @@ void setup() {
 
   publishAnnounce();
   gameManager->publishGameState();
-
   ledController->showRGBTest();
+  displayController->forceRefresh();
 
   Serial.println("Master controls:");
   Serial.println("  NEXT    (>) : start / next question");
@@ -122,6 +131,8 @@ void loop() {
     gameManager->handlePhase();
     gameManager->sendPingToAllClients();
   }
+
+  if (displayController) displayController->update();
 
   static uint32_t lastClientCheck = 0;
   if (millis() - lastClientCheck > 5000) {
