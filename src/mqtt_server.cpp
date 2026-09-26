@@ -121,6 +121,7 @@ void handleClientJoin(const String& payload) {
     gameClients[gameClientCount].connected = true;
     gameClients[gameClientCount].buzzed = false;
     gameClients[gameClientCount].lastSeen = millis();
+    gameClients[gameClientCount].batteryMv = 0; // Unknown until first heartbeat with battery telemetry
     
     Serial.printf("✓ New client added: %s (slot %d, color R:%d G:%d B:%d)\n",
                   clientId.c_str(), gameClients[gameClientCount].slot,
@@ -215,17 +216,25 @@ void handleClientBuzz(const String& payload) {
 }
 
 void handleClientPing(const String& payload) {
-  StaticJsonDocument<100> doc;
+  StaticJsonDocument<128> doc;
   DeserializationError error = deserializeJson(doc, payload);
   
   if (error) return;
   
   String clientId = doc[JsonKey::ID];
+  bool hasBattery = doc.containsKey(JsonKey::BATTERY_MV);
+  uint16_t batteryMv = hasBattery ? doc[JsonKey::BATTERY_MV].as<uint16_t>() : 0;
   
-  // Update last seen timestamp
+  // Update last seen timestamp and battery telemetry
   for (uint8_t i = 0; i < gameClientCount; i++) {
     if (gameClients[i].id == clientId) {
       gameClients[i].lastSeen = millis();
+      gameClients[i].connected = true;
+      
+      // Keep the previous value when an older client sends a heartbeat without batteryMv.
+      if (hasBattery) {
+        gameClients[i].batteryMv = batteryMv;
+      }
       break;
     }
   }
