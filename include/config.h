@@ -53,8 +53,8 @@ constexpr uint8_t MAX_CLIENTS = 10;
 constexpr uint8_t MIN_CLIENTS_TO_START = 1;
 
 // Ping Configuration
-constexpr uint16_t PING_INTERVAL_MS = 10000;    // Heartbeat + battery telemetry every 10 seconds
-constexpr uint16_t CLIENT_TIMEOUT_MS = 30000;   // Allow two missed heartbeats before considering client dead
+constexpr uint16_t PING_INTERVAL_MS = 5000;     // Heartbeat + battery telemetry every 5 seconds
+constexpr uint16_t CLIENT_TIMEOUT_MS = 15000;   // Consider client dead after 3 missed heartbeats
 
 // RGB Color Structure
 struct Rgb {
