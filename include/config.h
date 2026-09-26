@@ -12,12 +12,6 @@ constexpr uint8_t BUTTON_PIN = 18;  // Main Button Pin with INPUT_PULLUP (both S
   constexpr float BATTERY_DIVIDER_RATIO = 2.0f; // 100k / 100k voltage divider
 #endif
 
-// Additional Server Buttons (for Quiz Master control)
-#ifdef SERVER
-  constexpr uint8_t NEXT_BUTTON_PIN = 19;     // "Nächster Client" / "Falsche Antwort"
-  constexpr uint8_t CORRECT_BUTTON_PIN = 21;  // "Richtige Antwort" / "Weiter"
-#endif
-
 // LED Count (differs between Server & Client)
 #ifdef SERVER
   constexpr uint16_t LED_COUNT = 18;  // Server: 1-8 active player, 9-18 queue
