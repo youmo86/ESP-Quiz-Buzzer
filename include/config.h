@@ -1,40 +1,53 @@
 #pragma once
 #include <Arduino.h>
 
-// Hardware Pin Configuration (unified for Server & Client)
-constexpr uint8_t LED_PIN = 5;      // WS2812B Data Pin (both Server & Client)
-constexpr uint8_t BUTTON_PIN = 18;  // Main Button Pin with INPUT_PULLUP (both Server & Client)
+// Shared WS2812B data pin
+constexpr uint8_t LED_PIN = 5;
 
-// Client battery monitoring
-#ifndef SERVER
+#ifdef SERVER
+  // Master: 10-LED WS2812B strip only (the old 8-LED ring is removed)
+  constexpr uint16_t LED_COUNT = 10;
+
+  // ILI9341 2.8" TFT - hardware VSPI, landscape 320x240
+  constexpr uint8_t TFT_SCK_PIN  = 18;
+  constexpr uint8_t TFT_MISO_PIN = 19;
+  constexpr uint8_t TFT_MOSI_PIN = 23;
+  constexpr uint8_t TFT_CS_PIN   = 27;
+  constexpr uint8_t TFT_DC_PIN   = 26;
+  constexpr uint8_t TFT_RST_PIN  = 33;
+
+  // Master controls - active LOW with INPUT_PULLUP
+  constexpr uint8_t BTN_BACK_PIN    = 32; // ◀ hold = reset to beginning
+  constexpr uint8_t BTN_NEXT_PIN    = 21; // ▶ start / next question
+  constexpr uint8_t BTN_WRONG_PIN   = 25; // ✕ wrong answer
+  constexpr uint8_t BTN_CORRECT_PIN = 22; // ✓ correct answer
+#else
+  // Client: 8-LED ring + main buzzer button
+  constexpr uint16_t LED_COUNT = 8;
+  constexpr uint8_t BUTTON_PIN = 18;
+
+  // Client battery monitoring
   constexpr uint8_t BATTERY_ADC_PIN = 34;       // ADC1 input; usable while WiFi is active
   constexpr uint8_t BATTERY_ADC_SAMPLES = 8;    // Average samples for a stable reading
   constexpr float BATTERY_DIVIDER_RATIO = 2.0f; // 100k / 100k voltage divider
 #endif
 
-// LED Count (differs between Server & Client)
-#ifdef SERVER
-  constexpr uint16_t LED_COUNT = 18;  // Server: 1-8 active player, 9-18 queue
-#else
-  constexpr uint16_t LED_COUNT = 8;   // Client: 8 LED ring
-#endif
-
 // LED Configuration
-constexpr uint8_t LED_BRIGHTNESS = 64; // 0..255 (64 = 25% to prevent brownouts)
+constexpr uint8_t LED_BRIGHTNESS = 64; // 0..255
 
 // Button Timing Configuration (ms)
 constexpr uint16_t DEBOUNCE_MS = 20;
 constexpr uint16_t SHORT_PRESS_MAX_MS = 600;
 constexpr uint16_t LONG_PRESS_MS = 1200;
 constexpr uint16_t VERY_LONG_PRESS_MS = 4000;
+constexpr uint16_t MASTER_RESET_HOLD_MS = 2000;
 
 // WiFi/Network Configuration
 constexpr char WIFI_SSID[] = "QUIZ-HUB";
 constexpr char WIFI_PSK[] = "quiz12345"; // TODO: Change in production
 
-// Network addresses (use IPAddress constructor in code)
 #define AP_IP_ADDR 192, 168, 4, 1
-#define AP_GATEWAY_ADDR 192, 168, 4, 1  
+#define AP_GATEWAY_ADDR 192, 168, 4, 1
 #define AP_SUBNET_ADDR 255, 255, 255, 0
 
 // MQTT Configuration
@@ -47,35 +60,31 @@ constexpr uint8_t MAX_CLIENTS = 10;
 constexpr uint8_t MIN_CLIENTS_TO_START = 1;
 
 // Ping Configuration
-constexpr uint16_t PING_INTERVAL_MS = 5000;     // Heartbeat + battery telemetry every 5 seconds
-constexpr uint16_t CLIENT_TIMEOUT_MS = 15000;   // Consider client dead after 3 missed heartbeats
+constexpr uint16_t PING_INTERVAL_MS = 5000;
+constexpr uint16_t CLIENT_TIMEOUT_MS = 15000;
 
-// RGB Color Structure
 struct Rgb {
   uint8_t r, g, b;
   constexpr Rgb(uint8_t red = 0, uint8_t green = 0, uint8_t blue = 0) : r(red), g(green), b(blue) {}
 };
 
-// Player Colors (10 unique colors, clearly distinguishable)
 constexpr Rgb PLAYER_COLORS[MAX_CLIENTS] = {
-  Rgb(255, 0, 0),     // 1. Reines Rot
-  Rgb(0, 0, 255),     // 2. Reines Blau  
-  Rgb(0, 255, 0),     // 3. Reines Grün
-  Rgb(255, 255, 0),   // 4. Reines Gelb
-  Rgb(255, 0, 255),   // 5. Reines Magenta
-  Rgb(0, 255, 255),   // 6. Reines Cyan
-  Rgb(255, 128, 0),   // 7. Orange
-  Rgb(128, 0, 255),   // 8. Violett
-  Rgb(255, 192, 203), // 9. Rosa/Pink
-  Rgb(255, 255, 255)  // 10. Weiß
+  Rgb(255, 0, 0),
+  Rgb(0, 0, 255),
+  Rgb(0, 255, 0),
+  Rgb(255, 255, 0),
+  Rgb(255, 0, 255),
+  Rgb(0, 255, 255),
+  Rgb(255, 128, 0),
+  Rgb(128, 0, 255),
+  Rgb(255, 192, 203),
+  Rgb(255, 255, 255)
 };
 
-// Special Colors
 constexpr Rgb COLOR_WHITE(255, 255, 255);
 constexpr Rgb COLOR_BLACK(0, 0, 0);
 constexpr Rgb COLOR_ERROR(255, 0, 0);
 
-// Animation Timings
 constexpr uint16_t PULSE_SPEED_MS = 50;
 constexpr uint16_t SPIN_SPEED_MS = 60;
 constexpr uint16_t CELEBRATION_DURATION_MS = 5000;
