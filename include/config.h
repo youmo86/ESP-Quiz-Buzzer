@@ -9,18 +9,19 @@ constexpr uint8_t LED_PIN = 5;
   constexpr uint16_t LED_COUNT = 10;
 
   // ILI9341 2.8" TFT - hardware VSPI, landscape 320x240
+  // SPI bus kept on the ESP32 standard VSPI pins.
   constexpr uint8_t TFT_SCK_PIN  = 18;
   constexpr uint8_t TFT_MISO_PIN = 19;
   constexpr uint8_t TFT_MOSI_PIN = 23;
-  constexpr uint8_t TFT_CS_PIN   = 27;
-  constexpr uint8_t TFT_DC_PIN   = 26;
-  constexpr uint8_t TFT_RST_PIN  = 33;
+  constexpr uint8_t TFT_CS_PIN   = 17;
+  constexpr uint8_t TFT_DC_PIN   = 16;
+  constexpr uint8_t TFT_RST_PIN  = 4;
 
-  // Master controls - active LOW with INPUT_PULLUP
-  constexpr uint8_t BTN_BACK_PIN    = 32; // ◀ hold = reset to beginning
-  constexpr uint8_t BTN_NEXT_PIN    = 21; // ▶ start / next question
-  constexpr uint8_t BTN_WRONG_PIN   = 25; // ✕ wrong answer
-  constexpr uint8_t BTN_CORRECT_PIN = 22; // ✓ correct answer
+  // Master controls - grouped GPIOs, active LOW with INPUT_PULLUP
+  constexpr uint8_t BTN_BACK_PIN    = 25; // ◀ hold = reset to beginning
+  constexpr uint8_t BTN_NEXT_PIN    = 26; // ▶ start / next question
+  constexpr uint8_t BTN_WRONG_PIN   = 27; // ✕ wrong answer
+  constexpr uint8_t BTN_CORRECT_PIN = 32; // ✓ correct answer
 #else
   // Client: 8-LED ring + main buzzer button
   constexpr uint16_t LED_COUNT = 8;
