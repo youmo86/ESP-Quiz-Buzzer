@@ -68,6 +68,7 @@ namespace JsonKey {
   constexpr auto ID = "id";
   constexpr auto VERSION = "version";
   constexpr auto TIMESTAMP = "t";
+  constexpr auto BATTERY_MV = "batteryMv";
   
   // Announce
   constexpr auto MAX_CLIENTS = "maxClients";
@@ -118,4 +119,3 @@ inline Phase stringToPhase(const char* str) {
   if (strcmp(str, "RESET") == 0) return Phase::RESET;
   return Phase::BOOT;
 }
-
