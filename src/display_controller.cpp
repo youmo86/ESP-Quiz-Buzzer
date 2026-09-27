@@ -35,17 +35,25 @@ void DisplayController::showTestBuzz(uint8_t slot) {
 void DisplayController::forceRefresh() { firstDraw = true; drawScreen(); }
 
 void DisplayController::update() {
-  uint32_t now = millis();
+  const uint32_t now = millis();
+
+  // In test mode, redraw only when the temporary buzz highlight expires.
+  // showTestBuzz() already refreshes immediately when a buzz is received.
   if (testMode) {
-    if (firstDraw || now - lastRefresh >= 500 || (testBuzzSlot && now - testBuzzAt > 1200)) {
-      if (testBuzzSlot && now - testBuzzAt > 1200) testBuzzSlot = 0;
+    if (testBuzzSlot && now - testBuzzAt > 1200) {
+      testBuzzSlot = 0;
       drawScreen();
     }
     return;
   }
-  bool changed = firstDraw || currentPhase != lastPhase || gameClientCount != lastClientCount ||
-                 queueLength != lastQueueLength || activeClientIndex != lastActiveClientIndex;
-  if (changed || now - lastRefresh >= 1000) drawScreen();
+
+  // No periodic full-screen refresh: it caused visible black flashes on the
+  // ILI9341 over SPI. Redraw only when game data that affects the UI changes.
+  const bool changed = firstDraw || currentPhase != lastPhase ||
+                       gameClientCount != lastClientCount ||
+                       queueLength != lastQueueLength ||
+                       activeClientIndex != lastActiveClientIndex;
+  if (changed) drawScreen();
 }
 
 uint16_t DisplayController::rgb565(uint8_t r, uint8_t g, uint8_t b) const { return tft.color565(r,g,b); }
