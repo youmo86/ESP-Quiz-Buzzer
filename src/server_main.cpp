@@ -5,6 +5,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+#include <ArduinoJson.h>
 #include <Bounce2.h>
 #include "config.h"
 #include "protocol.h"
@@ -53,8 +54,6 @@ static void handleMasterButtons(){
     return;
   }
 
-  // On the first/home screen (LOBBY), a normal BACK press opens the buzzer diagnostic screen.
-  // No button needs to be held during power-up.
   if(currentPhase==Phase::LOBBY && btnBack.fell()){
     enterDiagnosticMode();
     backPressedAt=0;backResetTriggered=false;
@@ -90,7 +89,6 @@ void setup(){
   mqttBroker.subscribe(Topic::PING,[](const char* p){handleClientPing(String(p));});mqttBroker.begin();
   publishAnnounce();gameManager->publishGameState();
 
-  // Normal boot every time. Diagnostic mode is entered later from the lobby/home screen with BACK.
   ledController->showRGBTest();displayController->forceRefresh();
 }
 
