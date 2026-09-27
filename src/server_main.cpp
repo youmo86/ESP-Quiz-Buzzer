@@ -20,6 +20,20 @@ static uint32_t backPressedAt=0;static bool backResetTriggered=false;static bool
 
 static void setupButton(Bounce& b,uint8_t pin){pinMode(pin,INPUT_PULLUP);b.attach(pin);b.interval(DEBOUNCE_MS);}
 
+static void enterDiagnosticMode(){
+  diagnosticMode=true;gameLocked=false;
+  if(displayController)displayController->setTestMode(true);
+  if(ledController)ledController->showConnectedClients();
+  Serial.println("=== ENTER DIAGNOSTIC MODE FROM LOBBY ===");
+}
+
+static void exitDiagnosticMode(){
+  diagnosticMode=false;
+  if(displayController)displayController->setTestMode(false);
+  if(gameManager)gameManager->resetGame();
+  Serial.println("=== EXIT DIAGNOSTIC MODE ===");
+}
+
 static void handleDiagnosticBuzz(const String& payload){
   if(!diagnosticMode)return;
   StaticJsonDocument<200> doc;if(deserializeJson(doc,payload))return;String id=doc[JsonKey::ID];
@@ -33,16 +47,26 @@ static void handleDiagnosticBuzz(const String& payload){
 
 static void handleMasterButtons(){
   btnBack.update();btnNext.update();btnWrong.update();btnCorrect.update();
+
   if(diagnosticMode){
-    if(btnBack.fell()){
-      diagnosticMode=false;if(displayController)displayController->setTestMode(false);
-      if(gameManager)gameManager->resetGame();Serial.println("=== EXIT DIAGNOSTIC MODE ===");
-    }
+    if(btnBack.fell())exitDiagnosticMode();
     return;
   }
+
+  // On the first/home screen (LOBBY), a normal BACK press opens the buzzer diagnostic screen.
+  // No button needs to be held during power-up.
+  if(currentPhase==Phase::LOBBY && btnBack.fell()){
+    enterDiagnosticMode();
+    backPressedAt=0;backResetTriggered=false;
+    return;
+  }
+
   if(btnBack.fell()){backPressedAt=millis();backResetTriggered=false;}
-  if(btnBack.read()==LOW&&backPressedAt&&!backResetTriggered&&millis()-backPressedAt>=MASTER_RESET_HOLD_MS){if(gameManager)gameManager->resetGame();backResetTriggered=true;}
+  if(btnBack.read()==LOW&&backPressedAt&&!backResetTriggered&&millis()-backPressedAt>=MASTER_RESET_HOLD_MS){
+    if(gameManager)gameManager->resetGame();backResetTriggered=true;
+  }
   if(btnBack.rose()){backPressedAt=0;backResetTriggered=false;}
+
   if(btnNext.fell()&&gameManager){
     if(currentPhase==Phase::LOBBY){if(gameClientCount>=MIN_CLIENTS_TO_START){gameLocked=true;gameManager->startQuestion();}}
     else if(currentPhase!=Phase::BOOT)gameManager->startQuestion();
@@ -54,8 +78,6 @@ static void handleMasterButtons(){
 
 void setup(){
   Serial.begin(115200);Serial.println("ESP32 Quiz-Buzzer Master Starting...");
-  // Configure BACK first so holding it during power-on selects diagnostic mode.
-  pinMode(BTN_BACK_PIN,INPUT_PULLUP);delay(40);diagnosticMode=(digitalRead(BTN_BACK_PIN)==LOW);
 
   strip.begin();strip.setBrightness(LED_BRIGHTNESS);strip.clear();strip.show();ledController=new LEDController(strip);
   setupButton(btnBack,BTN_BACK_PIN);setupButton(btnNext,BTN_NEXT_PIN);setupButton(btnWrong,BTN_WRONG_PIN);setupButton(btnCorrect,BTN_CORRECT_PIN);
@@ -68,12 +90,8 @@ void setup(){
   mqttBroker.subscribe(Topic::PING,[](const char* p){handleClientPing(String(p));});mqttBroker.begin();
   publishAnnounce();gameManager->publishGameState();
 
-  if(diagnosticMode){
-    Serial.println("=== DIAGNOSTIC MODE: BACK held during startup ===");
-    currentPhase=Phase::LOBBY;gameLocked=false;displayController->setTestMode(true);ledController->showConnectedClients();
-  }else{
-    ledController->showRGBTest();displayController->forceRefresh();
-  }
+  // Normal boot every time. Diagnostic mode is entered later from the lobby/home screen with BACK.
+  ledController->showRGBTest();displayController->forceRefresh();
 }
 
 void loop(){
