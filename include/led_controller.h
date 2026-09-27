@@ -3,34 +3,33 @@
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
 
-// LED Controller class
+// Master WS2812B controller: one 10-LED strip, no legacy 8-LED ring.
 class LEDController {
 private:
   Adafruit_NeoPixel& strip;
-  
+
 public:
-  LEDController(Adafruit_NeoPixel& ledStrip);
-  
-  // Basic LED functions
+  explicit LEDController(Adafruit_NeoPixel& ledStrip);
+
   void setPixelColor(uint16_t pixel, const Rgb& color);
   void clearAllLEDs();
   void showRGBTest();
-  void showLEDs(); // Call strip.show()
-  
-  // Server-specific LED functions (18 LEDs)
-  void setActivePlayerLEDs(const Rgb& color);
-  void setQueueLED(uint8_t position, const Rgb& color);
-  void clearQueueLEDs();
+  void showLEDs();
+
+  // Each LED maps naturally to one of the 10 client slots when a per-client view is useful.
+  void setClientLED(uint8_t slotIndex, const Rgb& color);
+  void showConnectedClients();
+
+  // Whole-strip game feedback.
+  void showSolid(const Rgb& color);
   void updateServerLEDs();
-  
-  // Animation functions
+  void flashWrong();
+
+  // Non-blocking animations, called repeatedly from GameManager::handlePhase().
   void animateLobby();
   void animateReadyPingPong();
-  void testQueueDisplay();
-  void showConnectedClients();
   void animateReady();
   void animateOpen();
 };
 
-// Global LED controller instance
 extern LEDController* ledController;
